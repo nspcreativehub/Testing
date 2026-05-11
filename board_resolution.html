@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Resolution Generator | Novantix</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        :root {
+            --primary: #1e3a8a;
+            --accent: #10b981;
+            --bg: #f1f5f9;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --border: #e2e8f0;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', Arial, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .top-bar {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white; padding: 18px 32px;
+            display: flex; align-items: center; gap: 16px;
+            box-shadow: 0 4px 20px rgba(30,58,138,0.3);
+        }
+        .top-bar h1 { font-size: 1.3rem; font-weight: 700; }
+        .top-bar p { font-size: 0.82rem; opacity: 0.85; }
+
+        .app-layout { display: grid; grid-template-columns: 400px 1fr; min-height: calc(100vh - 72px); }
+
+        .form-panel {
+            background: white; border-right: 1px solid var(--border);
+            padding: 24px; overflow-y: auto; max-height: calc(100vh - 72px);
+        }
+        .form-panel h2 { font-size: 1rem; font-weight: 700; color: var(--primary); margin-bottom: 16px; margin-top: 20px; }
+        .form-panel h2:first-child { margin-top: 0; }
+
+        .form-group { margin-bottom: 14px; }
+        .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 9px 12px; border: 1.5px solid var(--border);
+            border-radius: 7px; font-size: 0.88rem; font-family: 'Inter', sans-serif;
+            background: #f8fafc; transition: border-color 0.2s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--primary); background: white;
+        }
+        .form-group textarea { resize: vertical; min-height: 70px; }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .btn { flex: 1; padding: 11px 16px; border: none; border-radius: 9px; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+        .btn-primary { background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: white; box-shadow: 0 4px 14px rgba(30,58,138,0.3); }
+        .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(30,58,138,0.4); }
+        .btn-secondary { background: var(--accent); color: white; box-shadow: 0 4px 14px rgba(16,185,129,0.3); }
+        .btn-secondary:hover { transform: translateY(-1px); }
+
+        .preview-panel { padding: 28px; overflow-y: auto; max-height: calc(100vh - 72px); background: #dde3ed; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+
+        /* ===== LETTER ===== */
+        .letter { width: 210mm; background: white; box-shadow: 0 8px 40px rgba(0,0,0,0.13); position: relative; font-size: 11.5px; line-height: 1.55; color: #1e293b; overflow: hidden; }
+        .letter::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #1e3a8a, #10b981, #1e3a8a); }
+
+        .page-container {
+            position: relative; width: 100%; min-height: 297mm;
+            padding: 22px 38px; display: flex; flex-direction: column;
+            box-sizing: border-box; background: white; overflow: hidden; page-break-after: always;
+        }
+        .page-container:last-child { page-break-after: auto; min-height: auto; }
+
+        .page-watermark-seal {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 480px; height: 480px;
+            border: 8px solid #1e3a8a; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0.05; pointer-events: none;
+            box-shadow: inset 0 0 0 16px rgba(30,58,138,0.1); z-index: 0;
+        }
+        .page-watermark-seal::after { content: ''; position: absolute; width: 420px; height: 420px; border: 4px dashed #1e3a8a; border-radius: 50%; }
+        .page-watermark-seal img { width: 150px; height: auto; position: relative; z-index: 10; }
+        .page-watermark-seal svg.seal-text-svg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 5; }
+
+        .letter-header { display: flex; flex-direction: column; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px; margin-bottom: 16px; text-align: center; z-index: 10; position: relative; }
+        .letter-header h2 { font-size: 26px; color: #1e3a8a; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+        .letter-header .tagline { font-size: 10px; color: #64748b; letter-spacing: 2px; text-transform: uppercase; margin-top: 4px; }
+        .divider-line { height: 2px; width: 60px; background: #1e3a8a; margin: 12px auto; }
+        .header-details { font-size: 9.5px; color: #475569; line-height: 1.7; }
+
+        .letter-subject { text-align: center; font-size: 12px; font-weight: 700; color: #1e293b; margin: 12px 0 20px 0; text-decoration: underline; text-underline-offset: 4px; text-transform: uppercase; line-height: 1.6; z-index: 10; position: relative; }
+
+        .letter-body { z-index: 10; position: relative; }
+        .letter-body p { margin-bottom: 10px; text-align: justify; }
+        .letter-body strong { color: #1e293b; }
+
+        table.resolution-table {
+            width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 11px;
+        }
+        table.resolution-table th, table.resolution-table td {
+            border: 1px solid #1e293b; padding: 8px; text-align: left;
+        }
+        table.resolution-table th { background-color: #f1f5f9; color: #1e3a8a; }
+
+        .signature-section { margin-top: 40px; display: flex; justify-content: flex-start; page-break-inside: avoid; z-index: 10; position: relative; }
+        .signature-block { position: relative; width: 250px; }
+        .signature-block p { font-size: 11.5px; color: #475569; }
+        .sign-line { border-top: 1.5px solid #1e293b; width: 200px; margin-top: 10px; padding-top: 5px; }
+        .sign-line .name { font-weight: 700; color: #1e293b; }
+
+        .company-seal {
+            position: absolute; width: 100px; height: 100px;
+            border: 2px solid #1e3a8a; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0.8; top: -12px; left: 80px; transform: rotate(-10deg);
+            pointer-events: none; background: rgba(255,255,255,0.6); z-index: 10;
+            box-shadow: inset 0 0 0 4px rgba(30,58,138,0.1);
+        }
+        .company-seal::after { content: ''; position: absolute; width: 88px; height: 88px; border: 1px dashed #1e3a8a; border-radius: 50%; }
+        .company-seal img { width: 32px; height: auto; position: relative; z-index: 10; }
+        .company-seal svg.seal-text-svg { position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 5; }
+
+        .letter-footer { margin-top: auto; padding-top: 10px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 8.5px; color: #94a3b8; z-index: 10; position: relative; }
+
+        /* Print */
+        @media print {
+            body { background: white !important; }
+            .top-bar, .form-panel { display: none !important; }
+            .app-layout { display: block !important; }
+            .preview-panel { display: block !important; padding: 0 !important; background: white !important; max-height: none !important; overflow: visible !important; }
+            @page { size: A4; margin: 0; }
+            .letter { box-shadow: none !important; width: 100%; }
+            .page-container { padding: 14mm !important; height: 297mm !important; page-break-after: always !important; page-break-inside: avoid; }
+            .page-container:last-child { page-break-after: auto !important; }
+            .letter::before { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+        }
+
+        @media (max-width: 1024px) {
+            .app-layout { grid-template-columns: 1fr; }
+            .preview-panel, .form-panel { max-height: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="top-bar">
+    <div>
+        <h1>🏢 Board Resolution Generator</h1>
+        <p>Novantix Innovation Technology · Fill details and print/save as PDF</p>
+    </div>
+</div>
+
+<div class="app-layout">
+    <!-- FORM -->
+    <div class="form-panel">
+        <h2>📝 Resolution Details</h2>
+
+        <div class="form-group">
+            <label>Meeting Date</label>
+            <input type="date" id="meetingDate" oninput="updatePreview()">
+        </div>
+
+        <h2>🏦 Bank Details</h2>
+        <div class="form-group">
+            <label>Bank Name</label>
+            <input type="text" id="bankName" value="HDFC Bank Ltd." oninput="updatePreview()">
+        </div>
+        <div class="form-group">
+            <label>Branch Name & Address</label>
+            <textarea id="branchAddress" rows="3" oninput="updatePreview()">Madhapur Branch, Hyderabad, Telangana</textarea>
+        </div>
+
+        <h2>✍️ Authorized Signatories</h2>
+        <div class="form-row">
+            <div class="form-group">
+                <label>Director 1 Name</label>
+                <input type="text" id="dir1Name" value="N Sai Prasad" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Director 1 DIN</label>
+                <input type="text" id="dir1Din" value="00000000" oninput="updatePreview()">
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Director 1 Address</label>
+            <input type="text" id="dir1Address" value="Hyderabad, Telangana" oninput="updatePreview()">
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Director 2 Name</label>
+                <input type="text" id="dir2Name" value="" placeholder="Leave blank if none" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Director 2 DIN</label>
+                <input type="text" id="dir2Din" value="" oninput="updatePreview()">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Mode of Operation</label>
+            <select id="modeOp" onchange="updatePreview()">
+                <option value="Any one director severally">Any one director severally</option>
+                <option value="Jointly by Director 1 and Director 2">Jointly by Director 1 and Director 2</option>
+            </select>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="window.print()">🖨️ Print / Save PDF</button>
+            <button class="btn btn-secondary" onclick="resetForm()">🔄 Reset</button>
+        </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div class="preview-panel">
+        <div class="letter" id="letterPreview">
+            <div class="page-container">
+                <div class="page-watermark-seal">
+                    <img src="logo.png" alt="Seal" onerror="this.style.display='none'">
+                    <svg viewBox="0 0 100 100" class="seal-text-svg">
+                        <path id="sTop1" d="M 12 50 A 38 38 0 0 1 88 50" fill="transparent"/>
+                        <text font-family="Arial" font-size="6.5" font-weight="700" fill="#1e3a8a" letter-spacing="0.2">
+                            <textPath href="#sTop1" startOffset="50%" text-anchor="middle">NOVANTIX INNOVATION</textPath>
+                        </text>
+                        <path id="sBot1" d="M 88 50 A 38 38 0 0 1 12 50" fill="transparent"/>
+                        <text font-family="Arial" font-size="6.5" font-weight="700" fill="#1e3a8a" letter-spacing="0.2">
+                            <textPath href="#sBot1" startOffset="50%" text-anchor="middle">TECHNOLOGIES PVT LTD</textPath>
+                        </text>
+                    </svg>
+                </div>
+
+                <!-- Header -->
+                <div class="letter-header">
+                    <h2>Novantix Innovation Technology</h2>
+                    <p class="tagline">Your Vision, Our Creation</p>
+                    <div class="divider-line"></div>
+                    <div class="header-details">
+                        <p><strong>CIN:</strong> U62010TS2026PTC211521 &nbsp;|&nbsp; <strong>Address:</strong> Hyderabad, Telangana, India</p>
+                        <p><strong>Phone:</strong> +91 9347762248 &nbsp;|&nbsp; <strong>Email:</strong> info@novantixtech.com &nbsp;|&nbsp; <strong>Web:</strong> www.novantixtech.com</p>
+                    </div>
+                </div>
+
+                <div class="letter-subject">
+                    CERTIFIED TRUE COPY OF THE RESOLUTION PASSED AT THE MEETING OF THE BOARD OF DIRECTORS OF NOVANTIX INNOVATION TECHNOLOGIES PVT LTD HELD ON <span id="pDate"></span> AT THE REGISTERED OFFICE OF THE COMPANY
+                </div>
+
+                <div class="letter-body">
+                    <p><strong>RESOLVED THAT</strong> a Current Account in the name of the Company be opened with <strong><span id="pBank"></span></strong>, <strong><span id="pBranch"></span></strong>, and that the said Bank be and is hereby authorized to honor cheques, bills of exchange, and promissory notes drawn, accepted, or made on behalf of the Company and to act upon any instructions so given relating to the account, whether the same be overdrawn or not, or relating to the transactions of the Company.</p>
+
+                    <p><strong>RESOLVED FURTHER THAT</strong> the said Bank be and is hereby authorized to accept instructions regarding the operation of the account, including internet banking, mobile banking, and debit card facilities, from any one or more of the following Directors / Authorized Signatories:</p>
+
+                    <table class="resolution-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 10%; text-align: center;">S.No.</th>
+                                <th style="width: 40%;">Name of Authorized Signatory</th>
+                                <th style="width: 20%;">Designation</th>
+                                <th style="width: 30%;">Specimen Signature</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pDirectorsList">
+                            <!-- Filled via JS -->
+                        </tbody>
+                    </table>
+
+                    <p><strong>Mode of Operation:</strong> <span id="pMode"></span></p>
+
+                    <p><strong>RESOLVED FURTHER THAT</strong> the authorized signatories are hereby authorized to sign, execute, and submit all necessary forms, documents, agreements, and undertakings as may be required by the Bank for opening and operating the said current account.</p>
+
+                    <p><strong>RESOLVED FURTHER THAT</strong> a copy of this resolution, certified to be true by any one of the Directors of the Company, be furnished to the Bank and the Bank be requested to act thereon.</p>
+
+                    <p style="margin-top: 30px; font-weight: bold;">CERTIFIED TRUE COPY<br>For Novantix Innovation Technologies Pvt Ltd</p>
+
+                    <!-- Signatures -->
+                    <div class="signature-section">
+                        <div class="signature-block">
+                            <div class="company-seal" style="left: 120px;">
+                                <img src="logo.png" alt="Seal" onerror="this.style.display='none'">
+                                <svg viewBox="0 0 100 100" class="seal-text-svg">
+                                    <path id="sSealTop" d="M 12 50 A 38 38 0 0 1 88 50" fill="transparent"/>
+                                    <text font-family="Arial" font-size="6.5" font-weight="700" fill="#1e3a8a" letter-spacing="0.2">
+                                        <textPath href="#sSealTop" startOffset="50%" text-anchor="middle">NOVANTIX INNOVATION</textPath>
+                                    </text>
+                                    <path id="sSealBot" d="M 88 50 A 38 38 0 0 1 12 50" fill="transparent"/>
+                                    <text font-family="Arial" font-size="6.5" font-weight="700" fill="#1e3a8a" letter-spacing="0.2">
+                                        <textPath href="#sSealBot" startOffset="50%" text-anchor="middle">TECHNOLOGIES PVT LTD</textPath>
+                                    </text>
+                                </svg>
+                            </div>
+                            <br><br>
+                            <div class="sign-line">
+                                <p class="name" id="pSignName">N Sai Prasad</p>
+                                <p>Director</p>
+                                <p>DIN: <span id="pSignDin">00000000</span></p>
+                                <p>Address: <span id="pSignAddress">Hyderabad, Telangana</span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="letter-footer">
+                    Novantix Innovation Technologies Pvt. Ltd. &nbsp;|&nbsp; CIN: U62010TS2026PTC211521 &nbsp;|&nbsp; www.novantixtech.com &nbsp;|&nbsp; System-generated document.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const today = new Date();
+    document.getElementById('meetingDate').valueAsDate = today;
+
+    function fmt(ds) {
+        if (!ds) return '—';
+        return new Date(ds).toLocaleDateString('en-IN',{year:'numeric',month:'long',day:'numeric'});
+    }
+
+    function updatePreview() {
+        const get = id => document.getElementById(id).value;
+        
+        document.getElementById('pDate').textContent = fmt(get('meetingDate')).toUpperCase();
+        document.getElementById('pBank').textContent = get('bankName');
+        document.getElementById('pBranch').textContent = get('branchAddress');
+        
+        let d1 = get('dir1Name');
+        let d2 = get('dir2Name');
+        
+        let trs = `
+            <tr>
+                <td style="text-align: center;">1.</td>
+                <td>${d1 || '-'}</td>
+                <td>Director</td>
+                <td></td>
+            </tr>
+        `;
+        if(d2.trim()) {
+            trs += `
+            <tr>
+                <td style="text-align: center;">2.</td>
+                <td>${d2}</td>
+                <td>Director</td>
+                <td></td>
+            </tr>
+            `;
+        }
+        document.getElementById('pDirectorsList').innerHTML = trs;
+        
+        document.getElementById('pMode').textContent = get('modeOp');
+        
+        document.getElementById('pSignName').textContent = d1 || '-';
+        document.getElementById('pSignDin').textContent = get('dir1Din') || '-';
+        document.getElementById('pSignAddress').textContent = get('dir1Address') || '-';
+    }
+
+    function resetForm() {
+        document.getElementById('meetingDate').valueAsDate = new Date();
+        document.getElementById('bankName').value = 'HDFC Bank Ltd.';
+        document.getElementById('branchAddress').value = 'Madhapur Branch, Hyderabad, Telangana';
+        document.getElementById('dir1Name').value = 'N Sai Prasad';
+        document.getElementById('dir1Din').value = '00000000';
+        document.getElementById('dir1Address').value = 'Hyderabad, Telangana';
+        document.getElementById('dir2Name').value = '';
+        document.getElementById('dir2Din').value = '';
+        document.getElementById('modeOp').selectedIndex = 0;
+        updatePreview();
+    }
+
+    updatePreview();
+</script>
+</body>
+</html>
